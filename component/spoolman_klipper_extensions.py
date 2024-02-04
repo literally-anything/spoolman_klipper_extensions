@@ -50,33 +50,40 @@ class SpoolmanKlipperExtensions:
                 self._spoolman = self._server.lookup_component('spoolman')
 
                 if self._spoolman.spool_id is not None:
-                    await self._handle_spool_change(self._spoolman.spool_id)
+                    await self._handle_spool_change({'spool_id': self._spoolman.spool_id})
             else:
                 self._spoolman = None
 
     async def _handle_spool_change(self, spool_info: dict[str, Any]) -> None:
         spool_id: int | None = spool_info.get('spool_id', None)
-        if self._spoolman is not None and spool_id is not None:
-            spool_request = WebRequest(
-                '/server/spoolman/proxy',
-                {
-                    'path': f'/v1/spool/{spool_id}',
-                    'request_method': 'GET',
-                    'use_v2_response': True
-                },
-                RequestType.POST
-            )
-            # noinspection PyProtectedMember
-            spool_response = await self._spoolman._proxy_spoolman_request(spool_request)
-            filament = spool_response.get('filament', {})
+        if self._spoolman is not None:
+            if spool_id is not None:
+                spool_request = WebRequest(
+                    '/server/spoolman/proxy',
+                    {
+                        'path': f'/v1/spool/{spool_id}',
+                        'request_method': 'GET',
+                        'use_v2_response': True
+                    },
+                    RequestType.POST
+                )
+                # noinspection PyProtectedMember
+                spool_response = await self._spoolman._proxy_spoolman_request(spool_request)
+                filament = spool_response.get('filament', {})
+            else:
+                filament = {}
 
             self.preheat_extruder_temp = filament.get('settings_extruder_temp', self.preheat_default_extruder_temp)
             self.preheat_bed_temp = filament.get('settings_bed_temp', self.preheat_default_bed_temp)
 
             if self._klippy_api.klippy.is_connected():
                 klipper_objects = await self._klippy_api.get_object_list([])
-                if f'gcode_macro {PREHEAT_MACRO_NAME}' in klipper_objects:
+                if f'gcode_macro {PREHEAT_SETUP_MACRO_NAME}' in klipper_objects:
                     await self.update_preheat_temps()
+            else:
+                logging.warning('Received spool change event while klippy is not connected')
+        else:
+            logging.error('Received spool change event, but spoolman is not connected')
 
     async def update_preheat_temps(self) -> None:
         gcode = f'{PREHEAT_SETUP_MACRO_NAME} EXTRUDER={self.preheat_extruder_temp} BED={self.preheat_bed_temp}'
