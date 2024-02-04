@@ -69,7 +69,7 @@ class SpoolmanKlipperExtensions:
                 )
                 # noinspection PyProtectedMember
                 spool_response = await self._spoolman._proxy_spoolman_request(spool_request)
-                filament = spool_response.get('filament', {})
+                filament = spool_response.get('response', {}).get('filament', {})
             else:
                 filament = {}
 
