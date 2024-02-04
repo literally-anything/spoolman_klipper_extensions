@@ -77,9 +77,7 @@ class SpoolmanKlipperExtensions:
             self.preheat_bed_temp = filament.get('settings_bed_temp', self.preheat_default_bed_temp)
 
             if self._klippy_api.klippy.is_connected():
-                klipper_objects = await self._klippy_api.get_object_list([])
-                if f'gcode_macro {PREHEAT_SETUP_MACRO_NAME}' in klipper_objects:
-                    await self.update_preheat_temps()
+                await self.update_preheat_temps()
             else:
                 logging.warning('Received spool change event while klippy is not connected')
         else:
